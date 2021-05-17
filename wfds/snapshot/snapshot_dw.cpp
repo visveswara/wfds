@@ -13,8 +13,8 @@ COMPILE:
 #include <cstdlib>
 #include <thread> 
 #include <unistd.h>
-#include "lsv.cpp"
-#include "sync_primitives.h"
+#include "../common/lsv.cpp"
+#include "../common/sync_primitives.h"
 #include <limits>
 
 using namespace std;
@@ -28,7 +28,6 @@ class snapshot_dw {
         intptr_t* A;
         lsv* B;
 
-
         snapshot_dw(int);
         ~snapshot_dw();
 
@@ -36,6 +35,7 @@ class snapshot_dw {
         intptr_t* scan();
 
     protected:
+        void refresh(int);
         void transfer(int, int);
 };
 
@@ -66,6 +66,10 @@ void snapshot_dw::transfer(int i, int x) {
     }
 }
 
+void snapshot_dw::refresh(int i) {
+    double_int b = B[i].LL();
+    B[i].DWCAS(b.val, b.seq, 0, 0);  
+}
 
 void snapshot_dw::write(int i, intptr_t v) {
     A[i] = v;
@@ -80,8 +84,7 @@ intptr_t* snapshot_dw::scan() {
     intptr_t* V = new intptr_t[m];
 
     for (int i = 0; i < m; i++) {
-        double_int b = B[i].LL();
-        B[i].DWCAS(b.val, b.seq, 0, 0);
+        refresh(i);
     }
     
     int x = X;

@@ -13,7 +13,7 @@ COMPILE:
 #include <cstdlib>
 #include <thread> 
 #include <unistd.h>
-#include "sync_primitives.h"
+#include "../common/sync_primitives.h"
 #include <limits>
 
 using namespace std;
@@ -48,6 +48,7 @@ class snapshot {
         int* scan();
 
     protected:
+        void refresh(int);
         void transfer(int, int);
 };
 
@@ -67,6 +68,15 @@ snapshot::~snapshot(){
     delete[] A;
     delete[] B;
 }
+
+void snapshot::refresh(int i) {
+    int64_t b = B[i];
+    int32_t a = 0;
+    int32_t b_count = low(b);
+    int64_t b_prime = combine(b_count + 1, a);
+    CAS(&B[i], b, b_prime);
+}
+
 
 void snapshot::transfer(int i, int x) {
     int64_t b = B[i];
@@ -91,7 +101,7 @@ void snapshot::write(int i, int32_t v) {
 int* snapshot::scan() {
     int* V = new int[m];
 
-    for (int i = 0; i < m; i++) {B[i] = 0;}
+    for (int i = 0; i < m; i++) {refresh(i);}
     
     int x = X;
     X = x + 1;
